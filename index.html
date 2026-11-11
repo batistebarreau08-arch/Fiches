@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="fr" data-palette="fluo-jaune-bleu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loulou Student - Fiches de Révision, Examens & Flashcards</title>
+
+  <!-- Google Fonts : Typographies officielles de Loulou Student -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@700&family=Caveat:wght@600&family=Comfortaa:wght@600;700&family=Fredoka:wght@500;600&family=Indie+Flower&family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@600;700&family=Patrick+Hand&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            loulou: {
+              brown: 'var(--loulou-brown)',
+              brownHover: 'var(--loulou-brown-hover)',
+              cream: 'var(--loulou-cream)',
+              creamSoft: 'var(--loulou-cream-soft)',
+              sand: 'var(--loulou-sand)',
+              amber: 'var(--loulou-amber)',
+              amberSoft: 'var(--loulou-amber-soft)',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- PDF.js pour extraction locale PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
+
+  <!-- JSZip pour extraction de texte PPTX (PowerPoint) et DOCX (Word) client-side -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <!-- KaTeX pour formules mathématiques et scientifiques -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="min-h-screen flex flex-col font-body selection:bg-amber-200">
+
+  <!-- NAVIGATION FIXE ÉLÉGANTE (NO-PRINT) -->
+  <header class="sticky top-0 z-40 bg-[#fcfbf9]/95 backdrop-blur-md border-b border-stone-200/80 no-print">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      
+      <!-- Logo Loulou avec Mascotte Chien -->
+      <div class="flex items-center gap-2.5 cursor-pointer" onclick="showDashboard()">
+        <span class="text-2xl">🐶🎓</span>
+        <div class="flex flex-col">
+          <span class="text-xl font-bold tracking-tight text-stone-900 flex items-center gap-1.5">
+            Loulou <span class="text-amber-600 font-extrabold">Student</span>
+          </span>
+          <span class="text-[10px] text-stone-400 font-semibold uppercase tracking-wider">Local & Gratuit</span>
+        </div>
+      </div>
+
+      <!-- Onglets rapides -->
+      <nav class="hidden md:flex items-center gap-1 bg-stone-100 p-1 rounded-2xl">
+        <button id="nav-btn-home" onclick="showDashboard()" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition bg-white text-stone-900 shadow-xs">
+          Mes Fiches
+        </button>
+        <button id="nav-btn-new" onclick="startWizard()" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-stone-600 hover:text-stone-900 transition">
+          + Nouveau Cours
+        </button>
+        <button id="nav-btn-exam" onclick="openActiveExam()" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-stone-600 hover:text-stone-900 transition">
+          Examen Blanc
+        </button>
+        <button id="nav-btn-flashcards" onclick="openActiveFlashcards()" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-stone-600 hover:text-stone-900 transition">
+          Flashcards
+        </button>
+      </nav>
+
+      <!-- Réglages & IA -->
+      <div class="flex items-center gap-2">
+        <button onclick="openSettingsModal()" class="px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-100 text-xs font-semibold text-stone-700 flex items-center gap-1.5 transition">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-500"></i>
+          <span id="active-model-badge">IA : Gemini / Local</span>
+        </button>
+        <button onclick="startWizard()" class="px-4 py-2 rounded-xl bg-loulou-brown hover:bg-loulou-brownHover text-white text-xs font-bold shadow-sm transition">
+          Créer une fiche
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- CONTENEUR PRINCIPAL DYNAMIQUE -->
+  <main class="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+    <!-- ===================================================================
+         1. WIZARD ÉTAPE 1 : CRÉE TON PREMIER COURS (Capture 182142.png)
+         =================================================================== -->
+    <section id="wizard-step-1" class="hidden max-w-xl mx-auto animate-step">
+      <div class="bg-white rounded-3xl border border-stone-200/90 shadow-sm p-6 sm:p-8 space-y-6">
+        
+        <!-- En-tête avec flèche retour et barre de progression -->
+        <div class="flex items-center gap-4">
+          <button onclick="showDashboard()" class="text-stone-400 hover:text-stone-800 transition">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+          </button>
+          <div class="flex-1 bg-stone-100 h-2 rounded-full overflow-hidden">
+            <div class="bg-loulou-brown h-2 rounded-full" style="width: 33%"></div>
+          </div>
+        </div>
+
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-stone-900 tracking-tight">Crée ton premier cours</h1>
+          <p class="text-xs sm:text-sm text-stone-500 mt-1">Prends un cours sur lequel tu veux travailler et dont tu as les documents.</p>
+        </div>
+
+        <!-- Nom du cours -->
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-stone-700">Nom du cours</label>
+          <input id="wizard-course-title" type="text" placeholder="Le nom de ton cours" value="Biologie Humaine : Le Cœur, Double Pompe" class="w-full px-4 py-3 rounded-2xl border border-stone-200 bg-stone-50/50 text-stone-900 text-sm focus:border-stone-400 focus:bg-white transition">
+        </div>
+
+        <!-- Palette de 12 pastilles de couleurs pastel -->
+        <div class="space-y-2">
+          <label class="block text-xs font-bold text-stone-700">Couleur</label>
+          <div id="course-color-selector" class="flex items-center gap-2 flex-wrap">
+            <!-- Injecté par JavaScript (12 pastilles pastels comme sur le screenshot) -->
+          </div>
+        </div>
+
+        <!-- Grille de 33 icônes arrondis (comme sur le screenshot) -->
+        <div class="space-y-2">
+          <label class="block text-xs font-bold text-stone-700">Icône</label>
+          <div id="course-icon-grid" class="grid grid-cols-11 gap-1.5 max-h-40 overflow-y-auto p-1 bg-stone-50/60 rounded-2xl border border-stone-100">
+            <!-- Injecté par JavaScript -->
+          </div>
+        </div>
+
+        <!-- Bouton Continuer -->
+        <button onclick="goToWizardStep(2)" class="w-full py-3.5 rounded-2xl bg-loulou-brown hover:bg-loulou-brownHover text-white text-sm font-bold shadow-xs transition text-center">
+          Continuer
+        </button>
+
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         2. WIZARD ÉTAPE 2 : ENVOIE CE QUE T'AS (Capture 182238.png)
+         =================================================================== -->
+    <section id="wizard-step-2" class="hidden max-w-xl mx-auto animate-step">
+      <div class="bg-white rounded-3xl border border-stone-200/90 shadow-sm p-6 sm:p-8 space-y-6">
+        
+        <!-- En-tête avec progression -->
+        <div class="flex items-center gap-4">
+          <button onclick="goToWizardStep(1)" class="text-stone-400 hover:text-stone-800 transition">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+          </button>
+          <div class="flex-1 bg-stone-100 h-2 rounded-full overflow-hidden">
+            <div class="bg-loulou-brown h-2 rounded-full" style="width: 66%"></div>
+          </div>
+        </div>
+
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-stone-900 tracking-tight">Envoie ce que t'as.</h1>
+          <p class="text-xs sm:text-sm text-stone-500 mt-1">Ton cours, ta synthèse, tes slides, tes photos de notes.</p>
+        </div>
+
+        <!-- Zone de glisser-déposer de fichiers tous formats -->
+        <div id="wizard-dropzone" onclick="document.getElementById('wizard-file-input').click()" class="border-2 border-dashed border-stone-300 hover:border-loulou-brown rounded-3xl p-8 text-center cursor-pointer transition bg-stone-50/50 hover:bg-stone-50 group">
+          <input type="file" id="wizard-file-input" accept=".pdf,.docx,.pptx,.ppt,.txt,.md,.png,.jpg,.jpeg,.webp" class="hidden" onchange="handleWizardFiles(event)">
+          
+          <div class="space-y-3 pointer-events-none">
+            <div class="w-14 h-14 mx-auto rounded-full bg-loulou-brown text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition">
+              <i data-lucide="file-up" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <p class="text-base font-bold text-stone-800">Glisse tes fichiers ici</p>
+              <p class="text-xs text-stone-500 mt-0.5">ou clique pour les choisir · PDF, Word, PowerPoint, Images ou Markdown</p>
+            </div>
+            <p id="wizard-file-status" class="text-xs font-semibold text-amber-700 bg-amber-50 py-1 px-3 rounded-full inline-block border border-amber-200">
+              Prêt pour l'analyse
+            </p>
+          </div>
+        </div>
+
+        <!-- Zone de texte directe / extrait -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between text-xs text-stone-500">
+            <span class="font-bold">Contenu texte ou notes brutes :</span>
+            <span id="wizard-word-count">0 mot</span>
+          </div>
+          <textarea id="wizard-text-input" rows="6" placeholder="Colle tes notes ou le texte de ton cours..." class="w-full px-4 py-2.5 rounded-2xl border border-stone-200 bg-stone-50/50 text-stone-900 text-xs focus:border-stone-400 focus:bg-white font-mono leading-relaxed"></textarea>
+        </div>
+
+        <!-- Boutons d'action -->
+        <div class="space-y-3 pt-2">
+          <button onclick="loadSampleHeartCourse()" type="button" class="w-full py-3 rounded-2xl border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-bold transition">
+            Utiliser un document d'exemple (Le Cœur, double pompe)
+          </button>
+          <button onclick="goToWizardStep(3)" class="w-full py-3.5 rounded-2xl bg-loulou-brown hover:bg-loulou-brownHover text-white text-sm font-bold shadow-xs transition">
+            Continuer
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         3. WIZARD ÉTAPE 3 : PERSONNALISE TA FICHE (Captures 182305 & 182343)
+         =================================================================== -->
+    <section id="wizard-step-3" class="hidden animate-step">
+      <div class="bg-white rounded-3xl border border-stone-200/90 shadow-sm p-6 sm:p-8">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+          <!-- COLONNE GAUCHE : PRÉVISUALISATION A4 EN DIRECT (Style Loulou) -->
+          <div class="lg:col-span-5 flex flex-col items-center">
+            
+            <div class="mb-3 flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-semibold border border-stone-200">
+              <i data-lucide="eye" class="w-3.5 h-3.5 text-stone-500"></i>
+              <span>Ceci est un exemple pour la customisation</span>
+            </div>
+
+            <!-- Page A4 Preview Container -->
+            <div class="w-full max-w-[340px] sm:max-w-[380px] aspect-[1/1.414] rounded-2xl shadow-xl border border-stone-200 p-5 flex flex-col justify-between overflow-hidden transition-all duration-300" id="live-a4-preview">
+              
+              <div class="space-y-3">
+                <!-- Titre avec Surligneur dynamique -->
+                <div>
+                  <h3 id="preview-sheet-title" class="text-2xl font-bold tracking-tight text-stone-900 highlight-marker">
+                    LE CŒUR, DOUBLE POMPE
+                  </h3>
+                  <p class="text-[10px] text-stone-500 font-semibold mt-1">SVT · Physiologie humaine · Seconde</p>
+                </div>
+
+                <p class="text-[11px] text-stone-700 leading-snug">
+                  Deux pompes accolées : la droite irrigue les poumons, la gauche tout le corps. Elles battent ensemble environ 100 000 fois par jour.
+                </p>
+
+                <!-- Section ① Surlignée -->
+                <div class="pt-1">
+                  <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-bold text-[10px] mb-2 border border-amber-200">
+                    <span>①</span> QUATRE CAVITÉS, DEUX CIRCUITS
+                  </div>
+
+                  <!-- Schéma / Image preview (Cœur SVG haute définition) -->
+                  <div class="w-full h-32 rounded-xl bg-stone-50 border border-stone-100 flex items-center justify-center p-2">
+                    <svg viewBox="0 0 200 130" class="h-full max-w-full">
+                      <path d="M100 30 C 80 0, 30 10, 40 50 C 50 85, 100 115, 100 115 C 100 115, 150 85, 160 50 C 170 10, 120 0, 100 30 Z" fill="#e11d48" opacity="0.85"/>
+                      <path d="M70 30 C 60 50, 60 80, 100 115" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-dasharray="3,3"/>
+                      <text x="50" y="60" font-size="8" fill="#ffffff" font-weight="bold">Oreillette G.</text>
+                      <text x="110" y="60" font-size="8" fill="#ffffff" font-weight="bold">Oreillette D.</text>
+                    </svg>
+                  </div>
+                </div>
+
+                <!-- Cartouche Définition -->
+                <div class="p-2.5 rounded-xl border text-[10px] leading-relaxed transition-colors" style="background-color: var(--theme-box-bg); border-color: var(--theme-box-border); color: var(--theme-box-text)">
+                  <span class="font-bold block mb-0.5">📌 À savoir :</span>
+                  Cœur droit : sang pauvre en O₂ → poumons.<br>
+                  Cœur gauche : sang riche en O₂ → tout le corps.
+                </div>
+
+                <!-- Piège d'examen -->
+                <div class="p-2 rounded-xl border text-[9px] leading-snug" style="background-color: var(--theme-warn-bg); border-color: var(--theme-warn-border); color: var(--theme-warn-text)">
+                  ⚠️ <strong>Attention :</strong> Le sang de droite ne se mélange jamais avec celui de gauche chez l'adulte.
+                </div>
+              </div>
+
+              <!-- Bas de page preview -->
+              <div class="pt-2 border-t border-stone-100 flex items-center justify-between text-[8px] text-stone-400">
+                <span>Le cœur, double pompe</span>
+                <span>Page 1/3 · Généré avec Loulou Local</span>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- COLONNE DROITE : PARAMÈTRES DE STYLE ET DESIGN -->
+          <div class="lg:col-span-7 space-y-6">
+            
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-2xl font-extrabold text-stone-900 tracking-tight">Personnalise ta fiche</h2>
+                <p class="text-xs text-stone-500">Configure le rendu visuel et le périmètre avant génération.</p>
+              </div>
+              <button onclick="goToWizardStep(2)" class="text-xs text-stone-400 hover:text-stone-800 transition">
+                <i data-lucide="arrow-left" class="w-4 h-4 inline-block mr-1"></i> Étape 2
+              </button>
+            </div>
+
+            <!-- Sur quelle partie de ton cours ? -->
+            <div class="space-y-1.5">
+              <label class="block text-xs font-bold text-stone-700">Sur quelle partie de ton cours ?</label>
+              <input id="wizard-scope-input" type="text" value="Chapitre 1 - Anatomie et fonctionnement cardiaque" class="w-full px-4 py-2.5 rounded-2xl border border-stone-200 bg-stone-50/50 text-stone-900 text-xs focus:border-stone-400 focus:bg-white transition">
+            </div>
+
+            <!-- 1. DESIGN / STYLE DE PAGE (8 Choix) -->
+            <div class="space-y-2">
+              <label class="block text-xs font-bold text-stone-700">Design</label>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5" id="design-picker">
+                <!-- Épuré -->
+                <button onclick="selectDesign('epure')" class="design-card p-3 rounded-2xl border border-stone-200 hover:border-stone-400 text-center transition flex flex-col items-center justify-between h-24 bg-white" data-design="epure">
+                  <div class="w-10 h-10 rounded border border-stone-200 bg-white p-1 space-y-1">
+                    <div class="h-1 bg-stone-900 rounded-full w-full"></div>
+                    <div class="h-0.5 bg-stone-300 rounded-full w-3/4"></div>
+                    <div class="h-0.5 bg-stone-300 rounded-full w-1/2"></div>
+                  </div>
+                  <span class="text-[11px] font-bold text-stone-700 mt-1">Épuré</span>
+                </button>
+
+                <!-- Cahier Seyès -->
+                <button onclick="selectDesign('seyes')" class="design-card p-3 rounded-2xl border border-stone-200 hover:border-stone-400 text-center transition flex flex-col items-center justify-between h-24 bg-white" data-design="seyes">
+                  <div class="w-10 h-10 rounded border border-stone-200 bg-[#fdfdfd] p-1 flex flex-col justify-around border-l-2 border-l-rose-400">
+                    <div class="h-0.5 bg-indigo-300 w-full"></div>
+                    <div class="h-0.5 bg-indigo-200 w-full"></div>
+                    <div class="h-0.5 bg-indigo-200 w-full"></div>
+                  </div>
+                  <span class="text-[11px] font-bold text-stone-700 mt-1">Cahier Seyès</span>
+                </button>
+
+                <!-- Quadrillé surligneur (Par défaut) -->
+                <button onclick="selectDesign('quadrille')" class="design-card p-3 rounded-2xl border-2 border-loulou-brown text-center transition flex flex-col items-center justify-between h-24 bg-white relative" data-design="quadrille">
+                  <span class="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-loulou-brown text-white text-[8px] font-bold uppercase">Par défaut</span>
+                  <div class="w-10 h-10 rounded border border-stone-200 paper-quadrille p-1 space-y-1">
+                    <div class="h-1 bg-amber-400 rounded-full w-full"></div>
+                    <div class="h-0.5 bg-stone-700 rounded-full w-2/3"></div>
+                  </div>
+                  <span class="text-[11px] font-bold text-stone-900 mt-1">Quadrillé surligneur</span>
+                </button>
+
+                <!-- Carré -->
+                <button onclick="selectDesign('carre')" class="design-card p-3 rounded-2xl border border-stone-200 hover:border-stone-400 text-center transition flex flex-col items-center justify-between h-24 bg-white" data-design="carre">
+                  <div class="w-10 h-10 rounded border-2 border-stone-900 bg-stone-100 p-1 flex flex-col justify-between">
+                    <div class="h-2 bg-stone-900 w-full"></div>
+                    <div class="h-2 border border-stone-900 w-full"></div>
+                  </div>
+                  <span class="text-[11px] font-bold text-stone-700 mt-1">Carré</span>
+                </button>
+
+                <!-- Croquis -->
+                <button onclick="selectDesign('croquis')" class="design-card p-3 rounded-2xl border border-stone-200 hover:border-stone-400 text-center transition flex flex-col items-center justify-between h-24 bg-white" data-design="croquis">
+                  <div class="w-10 h-10 rounded border border-dashed border-stone-400 paper-croquis p-1 flex flex-col justify-between">
+                    <div class="h-1.5 bg-orange-400/80 rounded w-full"></div>
+                    <div class="h-1 bg-stone-400 w-1/2"></div>
+                  </div>
+                  <span class="text-[11px] font-bold text-stone-700 mt-1">Croquis</span>
+                </button>
+
+                <!-- Post-it -->
+                <button onclick="selectDesign('postit')" class="design-card p-3 rounded-2xl border border-stone-200 hover:border-stone-400 text-center transition flex flex-col items-center justify-between h-24 bg-white" data-design="postit">
+                  <div class="w-10 h-10 rounded bg-[#f5f0e6] p-1 relative">
+                    <div class="w-5 h-5 rounded bg-yellow-300 shadow-xs absolute top-1 left-1"></div>
+                    <div class="w-5 h-5 rounded bg-pink-300 shadow-xs absolute bottom-1 right-1"></div>
+                  </div>
+                  <span class="text-[11px] font-bold text-stone-700 mt-1">Post-it</span>
+                </button>
+
+                <!-- Pastel -->
+                <button onclick="selectDesign('pastel')" class="design-card p-3 rounded-2xl border border-stone-200 hover:border-stone-400 text-center transition flex flex-col items-center justify-between h-24 bg-white" data-design="pastel">
+                  <div class="w-10 h-10 rounded-2xl bg-purple-50 p-1 flex flex-col justify-around">
+                    <div class="h-1.5 bg-purple-300 rounded-full w-full"></div>
+                    <div class="h-1.5 bg-emerald-200 rounded-full w-full"></div>
+                  </div>
+                  <span class="text-[11px] font-bold text-stone-700 mt-1">Pastel</span>
+                </button>
+
+                <!-- Aquarelle -->
+                <button onclick="selectDesign('aquarelle')" class="design-card p-3 rounded-2xl border border-stone-200 hover:border-stone-400 text-center transition flex flex-col items-center justify-between h-24 bg-white" data-design="aquarelle">
+                  <div class="w-10 h-10 rounded paper-aquarelle p-1 space-y-1">
+                    <div class="h-1 bg-blue-400 rounded-full w-full"></div>
+                    <div class="h-0.5 bg-stone-300 rounded-full w-3/4"></div>
+                  </div>
+                  <span class="text-[11px] font-bold text-stone-700 mt-1">Aquarelle</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 2. COULEURS DU THÈME (7 Palettes officielles) -->
+            <div class="space-y-2">
+              <label class="block text-xs font-bold text-stone-700">Couleurs du thème</label>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="palette-picker">
+                <!-- Fluo classique -->
+                <button onclick="selectPalette('fluo-classique')" class="palette-card p-2.5 rounded-2xl border border-stone-200 text-left transition" data-palette="fluo-classique">
+                  <div class="flex h-3 rounded-full overflow-hidden border border-stone-100 mb-1.5">
+                    <span class="w-1/3 bg-stone-900"></span>
+                    <span class="w-1/3 bg-[#e11d48]"></span>
+                    <span class="w-1/3 bg-[#fde047]"></span>
+                  </div>
+                  <span class="text-[10px] font-bold text-stone-700 block truncate">Fluo classique</span>
+                </button>
+
+                <!-- Fluo jaune et bleu (Actif par défaut) -->
+                <button onclick="selectPalette('fluo-jaune-bleu')" class="palette-card p-2.5 rounded-2xl border-2 border-loulou-brown text-left transition" data-palette="fluo-jaune-bleu">
+                  <div class="flex h-3 rounded-full overflow-hidden border border-stone-100 mb-1.5">
+                    <span class="w-1/3 bg-stone-900"></span>
+                    <span class="w-1/3 bg-[#2563eb]"></span>
+                    <span class="w-1/3 bg-[#fef08a]"></span>
+                  </div>
+                  <span class="text-[10px] font-bold text-stone-900 block truncate">Fluo jaune et bleu</span>
+                </button>
+
+                <!-- Pastel menthe -->
+                <button onclick="selectPalette('pastel-menthe')" class="palette-card p-2.5 rounded-2xl border border-stone-200 text-left transition" data-palette="pastel-menthe">
+                  <div class="flex h-3 rounded-full overflow-hidden border border-stone-100 mb-1.5">
+                    <span class="w-1/3 bg-stone-900"></span>
+                    <span class="w-1/3 bg-[#059669]"></span>
+                    <span class="w-1/3 bg-[#a7f3d0]"></span>
+                  </div>
+                  <span class="text-[10px] font-bold text-stone-700 block truncate">Pastel menthe</span>
+                </button>
+
+                <!-- Pastel lilas -->
+                <button onclick="selectPalette('pastel-lilas')" class="palette-card p-2.5 rounded-2xl border border-stone-200 text-left transition" data-palette="pastel-lilas">
+                  <div class="flex h-3 rounded-full overflow-hidden border border-stone-100 mb-1.5">
+                    <span class="w-1/3 bg-stone-900"></span>
+                    <span class="w-1/3 bg-[#7c3aed]"></span>
+                    <span class="w-1/3 bg-[#ddd6fe]"></span>
+                  </div>
+                  <span class="text-[10px] font-bold text-stone-700 block truncate">Pastel lilas</span>
+                </button>
+
+                <!-- Kraft -->
+                <button onclick="selectPalette('kraft')" class="palette-card p-2.5 rounded-2xl border border-stone-200 text-left transition" data-palette="kraft">
+                  <div class="flex h-3 rounded-full overflow-hidden border border-stone-100 mb-1.5">
+                    <span class="w-1/3 bg-stone-900"></span>
+                    <span class="w-1/3 bg-[#92400e]"></span>
+                    <span class="w-1/3 bg-[#fde68a]"></span>
+                  </div>
+                  <span class="text-[10px] font-bold text-stone-700 block truncate">Kraft</span>
+                </button>
+
+                <!-- Feutre seul -->
+                <button onclick="selectPalette('feutre-seul')" class="palette-card p-2.5 rounded-2xl border border-stone-200 text-left transition" data-palette="feutre-seul">
+                  <div class="flex h-3 rounded-full overflow-hidden border border-stone-100 mb-1.5">
+                    <span class="w-1/2 bg-stone-900"></span>
+                    <span class="w-1/2 bg-stone-200"></span>
+                  </div>
+                  <span class="text-[10px] font-bold text-stone-700 block truncate">Feutre seul</span>
+                </button>
+
+                <!-- Fluo orange -->
+                <button onclick="selectPalette('fluo-orange')" class="palette-card p-2.5 rounded-2xl border border-stone-200 text-left transition" data-palette="fluo-orange">
+                  <div class="flex h-3 rounded-full overflow-hidden border border-stone-100 mb-1.5">
+                    <span class="w-1/3 bg-stone-900"></span>
+                    <span class="w-1/3 bg-[#ea580c]"></span>
+                    <span class="w-1/3 bg-[#fed7aa]"></span>
+                  </div>
+                  <span class="text-[10px] font-bold text-stone-700 block truncate">Fluo orange</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 3. POLICES DE CARACTÈRES OFFICIELLES (Titres & Corps) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label class="block text-xs font-bold text-stone-700">Police des titres</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-2.5 text-xs text-stone-400 font-bold">AA</span>
+                  <select id="select-font-title" onchange="updateTitleFont(this.value)" class="w-full pl-9 pr-4 py-2 rounded-2xl border border-stone-200 bg-stone-50 text-stone-800 text-xs font-semibold focus:outline-hidden">
+                    <option value="'Amatic SC', cursive" selected>Amatic SC (Style Loulou)</option>
+                    <option value="'Patrick Hand', cursive">Patrick Hand</option>
+                    <option value="'Quicksand', sans-serif">Quicksand</option>
+                    <option value="'Caveat', cursive">Caveat</option>
+                    <option value="'Comfortaa', cursive">Comfortaa</option>
+                    <option value="'Montserrat', sans-serif">Montserrat</option>
+                    <option value="'Playfair Display', serif">Playfair Display</option>
+                    <option value="'Fredoka', sans-serif">Fredoka</option>
+                    <option value="'Indie Flower', cursive">Indie Flower</option>
+                    <option value="'Inter', sans-serif">Inter</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="block text-xs font-bold text-stone-700">Police du texte</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-2.5 text-xs text-stone-400 font-bold">Aa</span>
+                  <select id="select-font-body" onchange="updateBodyFont(this.value)" class="w-full pl-9 pr-4 py-2 rounded-2xl border border-stone-200 bg-stone-50 text-stone-800 text-xs font-semibold focus:outline-hidden">
+                    <option value="'Quicksand', sans-serif" selected>Quicksand (Recommandé)</option>
+                    <option value="'Patrick Hand', cursive">Patrick Hand</option>
+                    <option value="'Inter', sans-serif">Inter</option>
+                    <option value="'Lora', serif">Lora (Académique)</option>
+                    <option value="'Caveat', cursive">Caveat</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. TOGGLE RETIRER LE QUADRILLAGE -->
+            <div class="flex items-center justify-between p-3.5 rounded-2xl bg-stone-50 border border-stone-100">
+              <div>
+                <span class="text-xs font-bold text-stone-800 block">Retirer le quadrillage</span>
+                <span class="text-[11px] text-stone-500">Les lignes ou les carreaux du thème disparaissent</span>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="toggle-grid" onchange="toggleGridLines(this.checked)" class="sr-only peer">
+                <div class="w-11 h-6 bg-stone-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-loulou-brown"></div>
+              </label>
+            </div>
+
+            <!-- BOUTON FINAL : CRÉER MA FICHE -->
+            <button onclick="launchGeneration()" class="w-full py-4 rounded-2xl bg-loulou-brown hover:bg-loulou-brownHover text-white text-base font-bold shadow-md transition text-center flex items-center justify-center gap-2">
+              <i data-lucide="sparkles" class="w-5 h-5 text-amber-300"></i>
+              <span>Créer ma fiche</span>
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         4. WIZARD ÉTAPE 4 : MODAL CHARGEMENT (Capture 182405.png)
+         =================================================================== -->
+    <div id="generation-modal" class="hidden fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl border border-stone-200 shadow-2xl p-8 max-w-sm w-full text-center space-y-6 animate-step">
+        
+        <!-- Mascotte Loulou Chien avec toque étudiante -->
+        <div class="w-20 h-20 mx-auto rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-4xl shadow-inner">
+          🐶🎓
+        </div>
+
+        <div>
+          <h3 class="text-xl font-bold text-stone-900">Loulou construit ta fiche</h3>
+          <p class="text-xs text-stone-500 mt-1">Analyse intelligente et mise en page en cours...</p>
+        </div>
+
+        <!-- Checklist animée comme sur le screenshot -->
+        <div class="p-4 rounded-2xl bg-stone-50 border border-stone-100 text-left space-y-3 text-xs">
+          <div id="check-step-1" class="flex items-center gap-2 text-stone-400">
+            <span class="step-icon"><i data-lucide="circle" class="w-4 h-4"></i></span>
+            <span>J'ouvre ton cours</span>
+          </div>
+          <div id="check-step-2" class="flex items-center gap-2 text-stone-400">
+            <span class="step-icon"><i data-lucide="circle" class="w-4 h-4"></i></span>
+            <span>Je trie l'essentiel</span>
+          </div>
+          <div id="check-step-3" class="flex items-center gap-2 text-stone-400">
+            <span class="step-icon"><i data-lucide="circle" class="w-4 h-4"></i></span>
+            <span>J'écris ta fiche</span>
+          </div>
+          <div id="check-step-4" class="flex items-center gap-2 text-stone-400">
+            <span class="step-icon"><i data-lucide="circle" class="w-4 h-4"></i></span>
+            <span>Je la mets en page</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ===================================================================
+         5. VUE FICHE GÉNÉRÉE & RÉSULTAT (Capture 182419.png)
+         =================================================================== -->
+    <section id="view-final-sheet" class="hidden space-y-6 animate-step">
+      
+      <!-- Barre d'actions supérieure -->
+      <div class="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-stone-200 shadow-xs no-print">
+        <div class="flex items-center gap-3">
+          <button onclick="showDashboard()" class="px-3 py-1.5 rounded-xl border border-stone-200 text-xs font-semibold text-stone-700 hover:bg-stone-50 flex items-center gap-1.5">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Mes fiches
+          </button>
+          <span id="final-course-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200">
+            Biologie Humaine
+          </span>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="window.print()" class="px-4 py-2 rounded-xl bg-loulou-brown hover:bg-loulou-brownHover text-white text-xs font-bold flex items-center gap-2 shadow-xs transition">
+            <i data-lucide="download" class="w-4 h-4"></i> Télécharger ma fiche (PDF)
+          </button>
+          <button onclick="startExamForCurrentSheet()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition">
+            <i data-lucide="check-square" class="w-4 h-4"></i> Passer l'examen
+          </button>
+          <button onclick="startFlashcardsForCurrentSheet()" class="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition">
+            <i data-lucide="layers" class="w-4 h-4"></i> Flashcards
+          </button>
+        </div>
+      </div>
+
+      <!-- Les Pages A4 de la Fiche de Révision (Conteneur paginé) -->
+      <div id="final-pages-container" class="space-y-8 flex flex-col items-center">
+        <!-- Injecté dynamiquement par JavaScript sous forme de véritables pages A4 avec style Loulou -->
+      </div>
+
+    </section>
+
+    <!-- ===================================================================
+         6. TABLEAU DE BORD (DASHBOARD)
+         =================================================================== -->
+    <section id="view-dashboard" class="space-y-8 animate-step">
+      
+      <!-- Hero Banner Loulou Student -->
+      <div class="rounded-3xl bg-loulou-cream border border-stone-200/80 p-8 sm:p-10 flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div class="space-y-3 max-w-xl">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white text-stone-800 text-xs font-bold border border-stone-200">
+            <span>🐶 Loulou Local</span> · 100% Hors-ligne · Sans abonnement
+          </div>
+          <h1 class="text-3xl sm:text-4xl font-extrabold text-stone-900 tracking-tight leading-tight">
+            Dépose ton cours. <br>
+            Sit the exam. <span class="highlight-marker">Pass your year.</span>
+          </h1>
+          <p class="text-sm text-stone-600 leading-relaxed">
+            Génère tes fiches de révision fidèles à ton cours avec définitions, formules, examens blancs avec citations textuelles et flashcards.
+          </p>
+          <div class="pt-2 flex flex-wrap gap-3">
+            <button onclick="startWizard()" class="px-5 py-3 rounded-2xl bg-loulou-brown hover:bg-loulou-brownHover text-white text-xs font-bold shadow-md transition flex items-center gap-2">
+              <i data-lucide="plus" class="w-4 h-4"></i> Créer une nouvelle fiche
+            </button>
+            <button onclick="loadSampleHeartCourse()" class="px-4 py-3 rounded-2xl bg-white border border-stone-200 hover:bg-stone-50 text-stone-800 text-xs font-bold transition flex items-center gap-1.5">
+              Charger l'exemple (Le Cœur)
+            </button>
+          </div>
+        </div>
+
+        <div class="text-8xl sm:text-9xl select-none opacity-90">
+          🐶
+        </div>
+      </div>
+
+      <!-- Grille des fiches enregistrées -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-bold text-stone-900 flex items-center gap-2">
+            <i data-lucide="library" class="w-5 h-5 text-amber-600"></i> Mes cours et fiches
+          </h2>
+          <span id="dashboard-course-count" class="text-xs font-bold text-stone-500 bg-stone-100 px-3 py-1 rounded-full">
+            0 fiche
+          </span>
+        </div>
+
+        <div id="dashboard-courses-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Injecté dynamiquement -->
+        </div>
+
+        <div id="dashboard-empty-state" class="text-center py-16 px-4 bg-white rounded-3xl border border-dashed border-stone-300">
+          <span class="text-5xl block mb-3">📚</span>
+          <h3 class="text-base font-bold text-stone-800">Aucune fiche de révision pour le moment</h3>
+          <p class="text-xs text-stone-500 max-w-md mx-auto mt-1 mb-5">
+            Téléverse ton premier PDF, document Word, PowerPoint ou photo de cours pour générer ta fiche personnalisée.
+          </p>
+          <button onclick="startWizard()" class="px-5 py-2.5 rounded-2xl bg-loulou-brown text-white text-xs font-bold">
+            Commencer maintenant
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ===================================================================
+         7. VUE EXAMEN BLANC / QCM
+         =================================================================== -->
+    <section id="view-exam" class="hidden max-w-2xl mx-auto space-y-6 animate-step">
+      <div class="bg-white rounded-3xl border border-stone-200 shadow-sm p-6 sm:p-8 space-y-6">
+        
+        <div class="flex items-center justify-between border-b border-stone-100 pb-4">
+          <div>
+            <h2 class="text-lg font-bold text-stone-900 flex items-center gap-2">
+              <i data-lucide="award" class="w-5 h-5 text-emerald-600"></i> Examen Blanc
+            </h2>
+            <p id="exam-course-name" class="text-xs text-stone-500">Nom du cours</p>
+          </div>
+          <button onclick="showFinalSheet()" class="text-xs text-stone-400 hover:text-stone-800">
+            Retour à la fiche
+          </button>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="w-full bg-stone-100 h-2 rounded-full overflow-hidden">
+          <div id="exam-progress-bar" class="bg-amber-500 h-2 rounded-full" style="width: 20%"></div>
+        </div>
+
+        <!-- Question Box -->
+        <div id="exam-question-box" class="space-y-6">
+          <div class="flex items-center justify-between text-xs text-stone-500 font-bold">
+            <span id="exam-q-number">Question 1 / 5</span>
+            <span class="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">Choix Multiple</span>
+          </div>
+
+          <h3 id="exam-q-text" class="text-base sm:text-lg font-bold text-stone-900 leading-snug">
+            Énoncé de la question ?
+          </h3>
+
+          <div id="exam-options-list" class="space-y-2.5">
+            <!-- Options injectées -->
+          </div>
+
+          <!-- Citation textuelle exacte du cours révélée après réponse -->
+          <div id="exam-quote-reveal" class="hidden p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs space-y-2">
+            <div class="font-bold text-amber-900 flex items-center gap-1.5">
+              <i data-lucide="quote" class="w-4 h-4 text-amber-600"></i> Citation exacte de ton cours :
+            </div>
+            <p id="exam-quote-text" class="italic text-stone-700 pl-3 border-l-2 border-amber-400">
+              « ... »
+            </p>
+            <p id="exam-quote-explanation" class="text-stone-600 pt-1">
+              Explication détaillée.
+            </p>
+          </div>
+
+          <div class="flex items-center justify-between pt-4 border-t border-stone-100">
+            <button id="exam-btn-prev" onclick="prevExamQuestion()" class="px-4 py-2 rounded-xl border border-stone-200 text-xs font-bold text-stone-600 hover:bg-stone-50">
+              Précédente
+            </button>
+            <button id="exam-btn-next" onclick="nextExamQuestion()" class="px-5 py-2.5 rounded-xl bg-loulou-brown hover:bg-loulou-brownHover text-white text-xs font-bold shadow-xs">
+              Valider / Suivante
+            </button>
+          </div>
+        </div>
+
+        <!-- Résultat Final -->
+        <div id="exam-result-box" class="hidden text-center py-8 space-y-4">
+          <span class="text-5xl block">🎉</span>
+          <h3 class="text-2xl font-extrabold text-stone-900">Bilan de l'Examen</h3>
+          <div class="p-6 rounded-2xl bg-stone-50 border border-stone-100 max-w-xs mx-auto">
+            <span class="text-xs uppercase tracking-wider text-stone-400 font-bold">Ta Note</span>
+            <p id="exam-final-score" class="text-4xl font-black text-amber-600 my-1">18 / 20</p>
+            <p id="exam-final-appraisal" class="text-xs font-semibold text-emerald-600">Excellent travail !</p>
+          </div>
+          <button onclick="showFinalSheet()" class="px-6 py-2.5 rounded-xl bg-loulou-brown text-white text-xs font-bold">
+            Retourner à la fiche
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         8. VUE FLASHCARDS (3D FLIP)
+         =================================================================== -->
+    <section id="view-flashcards" class="hidden max-w-xl mx-auto space-y-6 text-center animate-step">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold text-stone-900 text-left">Flashcards de Révision</h2>
+          <p id="flashcards-course-name" class="text-xs text-stone-500 text-left">Le Cœur, double pompe</p>
+        </div>
+        <span id="flashcard-counter" class="text-xs font-bold px-3 py-1 bg-purple-100 text-purple-800 rounded-full">
+          1 / 8
+        </span>
+      </div>
+
+      <!-- 3D Flip Card -->
+      <div class="perspective-1000 w-full h-80 cursor-pointer" onclick="flipFlashcard()">
+        <div id="flashcard-3d-inner" class="flashcard-inner">
+          
+          <div class="flashcard-front bg-white border-2 border-stone-200 shadow-md">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-amber-600 mb-3">Question / Notion</span>
+            <p id="flashcard-front-text" class="text-lg font-bold text-stone-900 px-4">
+              Clique pour retourner
+            </p>
+            <span class="text-[10px] text-stone-400 mt-6 flex items-center gap-1">
+              <i data-lucide="rotate-cw" class="w-3 h-3"></i> Clique ou Espace pour voir la réponse
+            </span>
+          </div>
+
+          <div class="flashcard-back bg-loulou-brown text-white shadow-md">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-amber-200 mb-3">Réponse & Explication</span>
+            <p id="flashcard-back-text" class="text-sm font-medium px-4 leading-relaxed">
+              Explication
+            </p>
+            <span class="text-[10px] text-stone-300 mt-6">Évalue ta réponse ci-dessous</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Évaluation -->
+      <div class="flex items-center justify-center gap-3">
+        <button onclick="rateFlashcard('bad')" class="flex-1 py-3 rounded-2xl bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-bold transition">
+          ❌ À revoir
+        </button>
+        <button onclick="rateFlashcard('good')" class="flex-1 py-3 rounded-2xl bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold transition">
+          ✅ Maîtrisé !
+        </button>
+      </div>
+      <p class="text-[11px] text-stone-400">Raccourci : Espace (Retourner) · Flèches Gauche/Droite (Naviguer)</p>
+    </section>
+
+  </main>
+
+  <!-- ===================================================================
+       MODAL PARAMÈTRES / CONFIGURATION IA (GEMINI, OLLAMA AUTO, GITHUB)
+       =================================================================== -->
+  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl border border-stone-200 shadow-2xl p-6 sm:p-8 max-w-lg w-full space-y-6 max-h-[90vh] overflow-y-auto animate-step">
+      
+      <div class="flex items-center justify-between border-b border-stone-100 pb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="settings" class="w-5 h-5 text-stone-600"></i>
+          <h3 class="text-lg font-bold text-stone-900">Paramètres de l'IA & Partage</h3>
+        </div>
+        <button onclick="closeSettingsModal()" class="text-stone-400 hover:text-stone-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Choix du Moteur IA -->
+      <div class="space-y-4">
+        <label class="block text-xs font-bold text-stone-700 uppercase tracking-wider">Moteur d'analyse & Synthèse</label>
+        
+        <!-- Option 1: Gemini API (Recommandé par l'utilisateur) -->
+        <label class="flex items-start gap-3 p-3.5 rounded-2xl border border-amber-300 bg-amber-50/50 cursor-pointer">
+          <input type="radio" name="settings-engine" value="gemini" checked class="mt-1 text-loulou-brown" onchange="toggleAiInputs('gemini')">
+          <div class="w-full">
+            <span class="text-xs font-bold text-stone-900 block">Google Gemini API (Clé gratuite)</span>
+            <span class="text-[11px] text-stone-500 block mb-2">Prend en charge les PDF, Word, PowerPoint et images avec reconnaissance de schéma.</span>
+            <input id="input-gemini-key" type="password" placeholder="Colle ta clé API Gemini (ex: AIzaSy...)" class="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 bg-white text-stone-900">
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-[10px] text-amber-700 underline mt-1 inline-block">Obtenir une clé Gemini gratuite sur Google AI Studio ↗</a>
+          </div>
+        </label>
+
+        <!-- Option 2: Ollama Local avec AUTO-DÉTECTION DYNAMIQUE -->
+        <label class="flex items-start gap-3 p-3.5 rounded-2xl border border-stone-200 hover:border-stone-300 cursor-pointer">
+          <input type="radio" name="settings-engine" value="ollama" class="mt-1 text-loulou-brown" onchange="toggleAiInputs('ollama')">
+          <div class="w-full">
+            <span class="text-xs font-bold text-stone-900 block">Ollama Local (Sur ton PC)</span>
+            <span class="text-[11px] text-stone-500 block mb-2">Recherche automatique des modèles installés sur ton PC.</span>
+            
+            <div class="flex items-center gap-2">
+              <select id="select-ollama-models" class="flex-1 px-3 py-2 text-xs rounded-xl border border-stone-200 bg-white text-stone-900">
+                <option value="llama3">llama3 (par défaut)</option>
+                <option value="mistral">mistral</option>
+              </select>
+              <button onclick="detectOllamaModels()" type="button" class="px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold flex items-center gap-1 transition">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Détecter
+              </button>
+            </div>
+            <p id="ollama-detect-status" class="text-[10px] text-stone-400 mt-1">Clique sur "Détecter" pour scanner ton PC.</p>
+          </div>
+        </label>
+
+        <!-- Option 3: Moteur Local Heuristique (Zéro clé) -->
+        <label class="flex items-start gap-3 p-3.5 rounded-2xl border border-stone-200 hover:border-stone-300 cursor-pointer">
+          <input type="radio" name="settings-engine" value="heuristic" class="mt-1 text-loulou-brown" onchange="toggleAiInputs('heuristic')">
+          <div>
+            <span class="text-xs font-bold text-stone-900 block">Moteur Heuristique Instantané (100% Hors-ligne)</span>
+            <span class="text-[11px] text-stone-500">Fonctionne immédiatement sans internet, sans clé et sans serveur.</span>
+          </div>
+        </label>
+      </div>
+
+      <!-- GUIDE GITHUB & PARTAGE MULTI-APPAREILS -->
+      <div class="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
+        <h4 class="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+          <i data-lucide="globe" class="w-4 h-4 text-amber-600"></i> Partager sur GitHub & Accéder depuis ton téléphone / iPad
+        </h4>
+        <p class="text-[11px] text-stone-600 leading-relaxed">
+          Pour utiliser cette application sur plusieurs appareils avec un lien web gratuit :<br>
+          1. Crée un dépôt sur <strong>github.com</strong>.<br>
+          2. Glisse tous les fichiers de ce dossier.<br>
+          3. Dans <strong>Settings > Pages</strong>, sélectionne la branche <code>main</code>.<br>
+          👉 Tu obtiens immédiatement un lien sécurisé HTTPS accessible par tout le monde !
+        </p>
+      </div>
+
+      <!-- Bouton Sauvegarder Réglages -->
+      <button onclick="saveSettings()" class="w-full py-3 rounded-2xl bg-loulou-brown text-white text-xs font-bold">
+        Enregistrer les paramètres
+      </button>
+
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
